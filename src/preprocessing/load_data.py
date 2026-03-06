@@ -1,13 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-def load_data(
-    file_path: Path,
-    columns: list[str],
-    sep: str = ",",
-    encoding: str = "utf-8",
-    print_head: bool = False
-) -> pd.DataFrame:
+def load_data(file_path: Path,columns: list[str],sep: str = ",",encoding: str = "utf-8", print_head: bool = False) -> pd.DataFrame:
     
     
     if not file_path.exists():
