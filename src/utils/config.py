@@ -10,10 +10,14 @@ RAW_DATA_PATH.mkdir(parents=True, exist_ok=True)
 PROCESSED_DATA_PATH.mkdir(parents=True, exist_ok=True)
 NOTEBOOKS_PATH.mkdir(parents=True, exist_ok=True)
 # File paths
+MODEL_PATH = BASE_DIR / "model.joblib"
 RATINGS_FILE = RAW_DATA_PATH / "ratings.dat"
 MOVIES_FILE = RAW_DATA_PATH / "movies.dat"
 RATING_CSV_FILE = PROCESSED_DATA_PATH / "ratings.csv"
 MOVIES_CSV_FILE = PROCESSED_DATA_PATH / "movies.csv"
+CLEANED_DATA_DIR = PROCESSED_DATA_PATH
+TRAIN_FILE = "train.csv"
+TEST_FILE = "test.csv"
 # Column names
 RATINGS_COLUMNS = ['userId', 'movieId', 'rating', 'timestamp']
 MOVIES_COLUMNS = ['movieId', 'title', 'genres']

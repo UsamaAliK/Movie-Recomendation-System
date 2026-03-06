@@ -1,7 +1,8 @@
 import pandas as pd
 import pathlib as path
 from src.utils.helpers import save_csv
-from src.utils.config import CLEANED_DATA_DIR,TRAIN_FILE,TEST_FILE
+from src.utils.config import CLEANED_DATA_DIR, TRAIN_FILE, TEST_FILE, RATINGS_COLUMNS, SEPARATOR, ENCODING
+from src.preprocessing.load_data import load_data
 
 def time_based_split(rating:pd.DataFrame,test_ratio:float=0.2,):
     rating_sorted = rating.sort_values(by=['userId','timestamp'])
