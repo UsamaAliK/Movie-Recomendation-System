@@ -165,14 +165,19 @@ with tab_rec:
 
         st.write(f"Based on your **{len(st.session_state.picked)}** picks:")
 
+        max_score = recs["score"].max() if len(recs) > 0 else 1
+        min_score = recs["score"].min() if len(recs) > 0 else 0
+        score_range = max_score - min_score if max_score != min_score else 1
+
         for i, row in recs.iterrows():
+            normalized = (row["score"] - min_score) / score_range
             col1, col2, col3 = st.columns([4, 2, 1])
             with col1:
                 st.write(f"**{i + 1}. {row['title']}**")
             with col2:
                 st.caption(row["genres"])
             with col3:
-                st.progress(row["score"])
+                st.progress(normalized)
 
 with tab_eval:
     rmse, mae = load_evaluation()
