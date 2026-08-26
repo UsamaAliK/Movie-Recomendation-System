@@ -2,7 +2,7 @@ from pathlib import Path
 import pandas as pd
 from surprise import SVD,Dataset,Reader
 from src.preprocessing.load_data import load_data
-from src.utils.config import CLEANED_DATA_DIR, RATINGS_COLUMNS, RATING_CSV_FILE
+from src.utils.config import CLEANED_DATA_DIR, RATINGS_COLUMNS, RATING_CSV_FILE,SEPARATOR,ENCODING
 
 import joblib
 

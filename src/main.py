@@ -5,13 +5,17 @@ from src.preprocessing.split_data import split_data
 
 from src.model.svd import train_svd, save_model, load_model
 from src.recommendation.recommend import recommend_for_user
+from src.evaluation.evaluation import evaluate_svd
 
 from src.utils.config import (
     RATING_CSV_FILE,
     MOVIES_CSV_FILE,
     MODEL_PATH,
     RATINGS_COLUMNS,
-    MOVIES_COLUMNS
+    MOVIES_COLUMNS,
+    TRAIN_FILE,
+    TEST_FILE,
+    CLEANED_DATA_DIR
 )
 
 
@@ -36,6 +40,15 @@ def main():
         model = train_svd(ratings)
         print("Saving SVD model...")
         save_model(model, MODEL_PATH)
+
+    test_file = CLEANED_DATA_DIR / TEST_FILE
+    if test_file.exists():
+        print("\nEvaluating model...")
+        test_df = pd.read_csv(test_file, dtype={"rating": "float32"})
+        rmse, mae = evaluate_svd(model, test_df)
+        print(f"RMSE: {rmse:.4f} | MAE: {mae:.4f}")
+    else:
+        print("\nTest file not found, skipping evaluation.")
 
     user_id = 1
 
