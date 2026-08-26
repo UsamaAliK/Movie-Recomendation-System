@@ -4,7 +4,8 @@ from src.preprocessing.load_data import load_data
 from src.preprocessing.split_data import split_data
 
 from src.model.svd import train_svd, save_model, load_model
-from src.recommendation.recommend import recommend_for_user
+from src.model.hybrid import hybrid_recommend
+from src.model.content_based import get_similarity_matrix
 from src.evaluation.evaluation import evaluate_svd
 
 from src.utils.config import (
@@ -52,17 +53,20 @@ def main():
 
     user_id = 1
 
-    print(f"Generating recommendations for user {user_id}")
+    print(f"\nGenerating hybrid recommendations for user {user_id}")
 
-    recommendations = recommend_for_user(
-        model=model,
+    sim_matrix = get_similarity_matrix(movies)
+
+    recommendations, alpha = hybrid_recommend(
+        user_id=user_id,
         train_df=ratings,
         movies_df=movies,
-        user_id=user_id,
+        svd_model=model,
+        sim_matrix=sim_matrix,
         top_n=10
     )
 
-    print("\nRecommended Movies:")
+    print(f"\nRecommended Movies (alpha={alpha}):")
     print(recommendations)
 
 
