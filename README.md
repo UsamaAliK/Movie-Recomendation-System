@@ -1,62 +1,174 @@
 # Movie Recommendation System
 
-A production-style movie recommendation engine utilizing collaborative filtering via the Surprise library (SVD model). Given a MovieLens dataset, it predicts user ratings to suggest new movies uniquely tailored to individual user tastes.
+A hybrid movie recommendation engine combining **collaborative filtering** (SVD) with **content-based filtering** (genre cosine similarity) to predict user ratings and suggest movies tailored to individual tastes. Includes a Streamlit web interface for interactive use.
 
-## Usage
-
-This project is built to execute simply from the terminal. The core orchestration happens through `src/main.py`.
-
-```bash
-# To run the pipeline entirely (from cleaning data, to training the model, and retrieving recommendations):
-python3 src/main.py
-```
-
-*Note: You must have raw `ratings.dat` and `movies.dat` files populated within the `data/raw/` directory prior to execution.*
+Built on the [MovieLens 1M](https://grouplens.org/datasets/movielens/1m/) dataset.
 
 ---
 
-## Pipeline Architecture
+## Quick Start
 
-The system's intelligence works via a sequential background pipeline configured to auto-execute missing steps. Once `src/main.py` is called:
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-1. **Check Datasets**: The system checks if `.csv` processed data exists. If not, it invokes the Preprocessing Module to construct it from `.dat` source files.
-2. **Check Model**: It checks `model.joblib` to see if a pre-trained SVD model already exists. If not, it instantiates the Model Module to train a new one using the processed data.
-3. **Execution**: The script then loads the necessary configuration and delegates to the Recommendation Module to yield an actionable DataFrame of purely recommended `Movie Titles` and `Predicted Ratings` for a given `user_id`.
+# Run the full pipeline (preprocessing, training, evaluation, recommendations)
+python3 src/main.py
+
+# Launch the Streamlit web app
+streamlit run app.py
+```
+
+> **Note:** Raw `ratings.dat` and `movies.dat` files must be present in `data/raw/` before running.
+
+---
+
+## How It Works
+
+### Recommendation Approach
+
+| Method | Description |
+|--------|-------------|
+| **Collaborative Filtering (SVD)** | Singular Value Decomposition via the `surprise` library. Learns latent factors from user-item rating patterns. |
+| **Content-Based Filtering** | One-hot encodes movie genres into vectors, computes cosine similarity between all movie pairs, and scores unrated movies by weighted similarity to a user's rated movies. |
+| **Hybrid** | Blends both scores: `final_score = α * svd_score + (1 - α) * content_score`. The weight `α` is computed dynamically based on how many ratings the user has provided — users with few ratings lean toward content-based (α→0.1), power users lean toward collaborative filtering (α→0.9). |
+
+### Pipeline
+
+```
+Raw .dat files
+    │
+    ▼
+Preprocessing (load → clean → split)
+    │
+    ▼
+Processed CSVs (ratings.csv, movies.csv, train.csv, test.csv)
+    │
+    ├──► SVD Training ──► model.joblib
+    │
+    ├──► Content Similarity Matrix ──► content_similarity.joblib
+    │
+    └──► Hybrid Recommendations
+```
 
 ```mermaid
 graph TD
-    A[Raw Data] -->|clean_data| B(Processed Data CSVs)
-    B -->|split_data| C(Train & Test Splits)
-    C -->|train_svd| D{Trained SVD Model}
-    D -->|save_model| E[(model.joblib)]
-    E -->|recommend_for_user| F[Top Recommended Movies]
+    A[Raw Data .dat] -->|load_data| B[Raw DataFrames]
+    B -->|clean_data| C[Cleaned CSVs]
+    C -->|split_data| D[Train / Test Splits]
+    D -->|train_svd| E[Trained SVD Model]
+    E -->|save_model| F[(model.joblib)]
+    C -->|build_genre_matrix| G[Content Similarity Matrix]
+    G -->|cache| H[(content_similarity.joblib)]
+    F --> I[Hybrid Recommend]
+    H --> I
+    I --> J[Top-N Movie Recommendations]
 ```
 
 ---
 
-## Project Structure and Modules
+## Web App (Streamlit)
+
+```bash
+streamlit run app.py
+```
+
+The app has three tabs:
+
+| Tab | Description |
+|-----|-------------|
+| **Pick Movies** | Search and select movies you like, rate them 1–5 stars |
+| **Get Recommendations** | View content-based recommendations derived from your picks using the genre similarity matrix |
+| **Model Evaluation** | Displays RMSE and MAE metrics for the trained SVD model on the test set |
+
+---
+
+## Project Structure
+
+```
+Movie-Recomendation-System/
+├── app.py                          # Streamlit web application
+├── model.joblib                    # Serialized trained SVD model
+├── data/
+│   ├── raw/                        # MovieLens 1M .dat files
+│   │   ├── ratings.dat
+│   │   ├── movies.dat
+│   │   └── users.dat
+│   └── processed/                  # Cleaned & split data
+│       ├── ratings.csv
+│       ├── movies.csv
+│       ├── train.csv
+│       ├── test.csv
+│       └── content_similarity.joblib
+├── notebooks/
+│   └── EDA.ipynb                   # Exploratory data analysis
+└── src/
+    ├── main.py                     # CLI pipeline orchestrator
+    ├── preprocessing/
+    │   ├── load_data.py            # .dat/.csv file loading
+    │   ├── clean_data.py           # Dedup, outlier removal, user/movie filtering
+    │   └── split_data.py           # Time-based train/test split
+    ├── model/
+    │   ├── svd.py                  # SVD training, save/load via joblib
+    │   ├── content_based.py        # Genre matrix, cosine similarity, content scores
+    │   └── hybrid.py               # Blended SVD + content-based recommendations
+    ├── recommendation/
+    │   └── recommend.py            # Pure collaborative filtering recommendations
+    ├── evaluation/
+    │   └── evaluation.py           # RMSE & MAE evaluation on test set
+    └── utils/
+        ├── config.py               # Paths, column names, constants
+        └── helpers.py              # CSV save utility
+```
+
+---
+
+## Module Details
 
 ### `src/preprocessing/`
 
-This module is responsible for mutating raw file dumps into machine-readable datasets.
-* **`load_data.py`**: A helper function strictly meant for loading file strings into initial Pandas DataFrames.
-* **`clean_data.py`**: Executes aggressive data hygiene loops. It strips duplicate ratings/movies, throws out ratings outside the valid boundary scale, removes users with low activity thresholds, and kicks out unpopular movies lacking reviews to maintain high collaborative data density.
-* **`split_data.py`**: Employs a time-based splitting mechanism, dividing user chronologies into testing and training sets.
+- **`load_data.py`** — Loads `.dat` files into Pandas DataFrames with configurable separators and encodings.
+- **`clean_data.py`** — Removes duplicate ratings/movies, filters outlier ratings (outside 1–5), drops inactive users (< 5 ratings) and unpopular movies (< 5 ratings).
+- **`split_data.py`** — Time-based split: sorts by timestamp per user, holds out the most recent 20% as the test set.
 
 ### `src/model/`
 
-Handles the core Machine Learning intelligence.
-* **`svd.py`**: Initiates the Singular Value Decomposition (SVD) Matrix Factorization algorithm. This script is capable of molding `UserId`/`MovieId` pairs over raw datasets efficiently using the `surprise` library and exposes utilities for persisting the trained state (`joblib.dump`).
+- **`svd.py`** — Trains an SVD model using `surprise.SVD` on the full training set. Saves/loads via `joblib`.
+- **`content_based.py`** — Builds a genre one-hot matrix, computes pairwise cosine similarity, and scores unrated movies by weighted similarity to a user's rated movies. Caches the similarity matrix to disk.
+- **`hybrid.py`** — Blends SVD and content-based scores with a dynamic `α` weight. `α` ranges from 0.1 (few ratings, trust content) to 0.9 (many ratings, trust collaborative).
 
 ### `src/recommendation/`
 
-This is where abstract mathematical models get transformed back into human-readable results.
-* **`recommend.py`**: Fetches movies the target user *hasn't* seen, runs them individually through the model context to guess their respective ratings, sorts the absolute best predictions, and bundles that back into a `pandas.DataFrame`.
+- **`recommend.py`** — Pure collaborative filtering recommender: predicts ratings for all unrated movies and returns the top-N.
+
+### `src/evaluation/`
+
+- **`evaluation.py`** — Evaluates the SVD model on the test set using RMSE and MAE from `surprise.accuracy`.
 
 ### `src/utils/`
 
-Contains helper scripts defining hardcoded values, file pathways, and reusable helper functions for CSV storage.
+- **`config.py`** — Centralized paths (`BASE_DIR`, `RAW_DATA_PATH`, `MODEL_PATH`, etc.), column names, data types, separator, and encoding constants.
+- **`helpers.py`** — `save_csv()` utility for writing DataFrames to disk.
 
-### `src/main.py`
+---
 
-The primary conductor orchestrating the whole orchestra of modules into a singular, clean run command.
+## Tech Stack
+
+- **Python 3.12**
+- **pandas** — Data manipulation
+- **scikit-learn** — Cosine similarity
+- **surprise** — SVD implementation and evaluation
+- **joblib** — Model serialization
+- **Streamlit** — Interactive web UI
+
+---
+
+## Data
+
+This project uses the [MovieLens 1M](https://grouplens.org/datasets/movielens/1m/) dataset. Place the following files in `data/raw/`:
+
+- `ratings.dat` — User ratings (`UserID::MovieID::Rating::Timestamp`)
+- `movies.dat` — Movie metadata (`MovieID::Title::Genres`)
+- `users.dat` — User demographics (`UserID::Gender::Age::Occupation::Zip-code`)
+
+The preprocessing pipeline will automatically clean and split the data on first run.
