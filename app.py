@@ -106,39 +106,36 @@ if st.session_state.picked:
 tab_pick, tab_rec, tab_eval = st.tabs(["Pick Movies", "Get Recommendations", "Model Evaluation"])
 
 with tab_pick:
-    st.subheader("Search and pick movies you like")
+    st.subheader("Pick movies you like")
 
-    search_query = st.text_input("Search movies by title", placeholder="e.g. Toy Story, Matrix, Star Wars...")
+    movie_titles = movies["title"].tolist()
+    selected_title = st.selectbox(
+        "Type to search and select a movie",
+        options=movie_titles,
+        index=None,
+        placeholder="Start typing a movie name...",
+    )
 
-    if search_query:
-        results = movies[movies["title"].str.contains(search_query, case=False, na=False)]
-        if results.empty:
-            st.warning("No movies found.")
+    if selected_title:
+        row = movies[movies["title"] == selected_title].iloc[0]
+        already_picked = any(p["movieId"] == row["movieId"] for p in st.session_state.picked)
+
+        if already_picked:
+            st.warning(f"**{row['title']}** is already in your picks.")
         else:
-            st.write(f"**{len(results)}** results found. Click to add:")
-            for _, row in results.head(20).iterrows():
-                already_picked = any(p["movieId"] == row["movieId"] for p in st.session_state.picked)
-                col1, col2, col3 = st.columns([5, 2, 1])
-                with col1:
-                    st.write(f"**{row['title']}** — _{row['genres']}_")
-                with col2:
-                    rating = st.slider(
-                        f"Rate {row['movieId']}",
-                        min_value=1, max_value=5, value=3,
-                        key=f"rate_{row['movieId']}",
-                        label_visibility="collapsed",
-                    )
-                with col3:
-                    if already_picked:
-                        st.write("✅ Added")
-                    else:
-                        if st.button("Add", key=f"add_{row['movieId']}"):
-                            st.session_state.picked.append({
-                                "movieId": row["movieId"],
-                                "title": row["title"],
-                                "rating": rating,
-                            })
-                            st.rerun()
+            col1, col2, col3 = st.columns([4, 2, 1])
+            with col1:
+                st.write(f"**{row['title']}** — _{row['genres']}_")
+            with col2:
+                rating = st.slider("Rating", min_value=1, max_value=5, value=3, key="new_rating")
+            with col3:
+                if st.button("Add to picks", type="primary"):
+                    st.session_state.picked.append({
+                        "movieId": row["movieId"],
+                        "title": row["title"],
+                        "rating": rating,
+                    })
+                    st.rerun()
 
     if st.session_state.picked:
         st.divider()
